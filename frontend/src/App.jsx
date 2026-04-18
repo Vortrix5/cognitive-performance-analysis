@@ -1,22 +1,22 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import { motion } from "motion/react";
+import Landing from "./pages/Landing";
+import PredictionWizard from "./pages/PredictionWizard";
 import Dashboard from "./pages/Dashboard";
-import Prediction from "./pages/Prediction";
 import EDA from "./pages/EDA";
 import Modeling from "./pages/Modeling";
 
 const navItems = [
-  { to: "/", label: "Dashboard" },
-  { to: "/prediction", label: "Prediction" },
-  { to: "/eda", label: "Data Exploration" },
-  { to: "/modeling", label: "Modeling" },
+  { to: "/analytics", label: "Dashboard" },
+  { to: "/analytics/data", label: "Data Exploration" },
+  { to: "/analytics/modeling", label: "Modeling" },
 ];
 
 function SidebarLink({ to, label }) {
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end={to === "/analytics"}
       className={({ isActive }) =>
         [
           "block rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
@@ -31,7 +31,7 @@ function SidebarLink({ to, label }) {
   );
 }
 
-export default function App() {
+function AnalyticsLayout() {
   return (
     <div className="h-screen bg-slate-950 text-slate-100">
       <div className="flex h-screen">
@@ -56,11 +56,9 @@ export default function App() {
             <div className="mt-auto">
               <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-5 shadow-lg shadow-emerald-500/10 backdrop-blur-md">
                 <p className="text-sm text-emerald-200">System status</p>
-
                 <p className="mt-3 text-4xl font-semibold text-emerald-400">
                   Online
                 </p>
-
                 <p className="mt-4 text-base leading-7 text-emerald-100/80">
                   Frontend and backend connected.
                 </p>
@@ -78,8 +76,7 @@ export default function App() {
             >
               <Routes>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/prediction" element={<Prediction />} />
-                <Route path="/eda" element={<EDA />} />
+                <Route path="/data" element={<EDA />} />
                 <Route path="/modeling" element={<Modeling />} />
               </Routes>
             </motion.div>
@@ -87,5 +84,15 @@ export default function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/predict" element={<PredictionWizard />} />
+      <Route path="/analytics/*" element={<AnalyticsLayout />} />
+    </Routes>
   );
 }
