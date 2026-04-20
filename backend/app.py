@@ -2,7 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
-
+from shap_helper import create_explainer, explain_prediction
+import shap
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.cluster import KMeans
 
@@ -54,6 +55,7 @@ y_class = df["Cognitive_Class"]
 
 rf_reg = RandomForestRegressor(n_estimators=100, random_state=42)
 rf_reg.fit(X, y)
+shap_explainer = create_explainer(rf_reg)
 
 rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
 rf_clf.fit(X, y_class)
@@ -153,6 +155,47 @@ def model_metrics():
         "r2_score": round(float(r2_score(y_test, preds)), 3),
         "rmse": round(float(np.sqrt(mean_squared_error(y_test, preds))), 3),
         "accuracy": round(float(acc), 3),
+    })
+
+@app.route("/predict-explain", methods=["POST"])
+def predict_explain():
+    data = request.json
+
+    gender_map = {"Male": 0, "Female": 1, "Other": 2}
+    diet_map = {"Vegetarian": 0, "Non-Vegetarian": 1, "Vegan": 2}
+    exercise_map = {"Low": 0, "Medium": 1, "High": 2}
+
+    exercise_value = exercise_map[data["exercise"]]
+    stress = int(data["stress"])
+    interaction = stress * exercise_value
+
+    input_df = pd.DataFrame([{
+        "Age": data["age"],
+        "Reaction_Time": data["reaction"],
+        "Memory_Test_Score": data["memory"],
+        "Caffeine_Intake": data["caffeine"],
+        "Gender": gender_map[data["gender"]],
+        "Diet_Type": diet_map[data["diet"]],
+        "Exercise_Frequency": exercise_value,
+        "Stress_Level": stress,
+        "Stress_Exercise_Interaction": interaction
+    }])
+
+    score = float(rf_reg.predict(input_df)[0])
+    level = int(rf_clf.predict(input_df)[0])
+
+    labels = {0: "Low", 1: "Medium", 2: "High"}
+
+    shap_result = explain_prediction(
+        shap_explainer,
+        input_df,
+        features
+    )
+
+    return jsonify({
+        "predicted_score": round(score, 2),
+        "cognitive_level": labels[level],
+        "shap_explanation": shap_result
     })
 
 if __name__ == "__main__":

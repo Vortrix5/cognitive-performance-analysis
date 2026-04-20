@@ -60,6 +60,37 @@ export default function PredictionWizard() {
     stress: null,
   });
 
+  function buildInterpretation(prediction) {
+  if (!prediction?.shap_explanation) {
+    return "This result is based on your reaction speed, memory performance, caffeine intake, lifestyle choices, and stress level.";
+  }
+
+  const topPositive = prediction.shap_explanation.top_positive || [];
+  const topNegative = prediction.shap_explanation.top_negative || [];
+
+  const bestPositive = topPositive[0]?.label;
+  const topNeg1 = topNegative[0]?.label;
+  const topNeg2 = topNegative[1]?.label;
+
+  if (bestPositive && topNeg1 && topNeg2) {
+    return `Your score is mainly lowered by ${topNeg1} and ${topNeg2}, while ${bestPositive} is your strongest supporting factor.`;
+  }
+
+  if (bestPositive && topNeg1) {
+    return `Your score is mainly lowered by ${topNeg1}, while ${bestPositive} helps support it.`;
+  }
+
+  if (topNeg1) {
+    return `Your score is mainly influenced by ${topNeg1}.`;
+  }
+
+  if (bestPositive) {
+    return `${bestPositive} is the strongest factor supporting your score.`;
+  }
+
+  return "This result is based on your reaction speed, memory performance, caffeine intake, lifestyle choices, and stress level.";
+}
+
   const [prediction, setPrediction] = useState(null);
   const [predicting, setPredicting] = useState(false);
   const [predictionError, setPredictionError] = useState("");
@@ -83,7 +114,7 @@ export default function PredictionWizard() {
       setPredicting(true);
       setPredictionError("");
 
-      const res = await api.post("/predict", formData);
+      const res = await api.post("/predict-explain", formData);
       setPrediction(res.data);
       setCurrentStep(8);
     } catch (error) {
@@ -345,52 +376,112 @@ export default function PredictionWizard() {
           )}
 
           {currentStep === 8 && (
-            <StepCard
-              title="Prediction Result"
-              description="Here is your estimated cognitive performance result."
-            >
-              {prediction ? (
-                <div className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6">
-                      <p className="text-sm text-cyan-200">Predicted Score</p>
-                      <p className="mt-4 text-5xl font-semibold text-white">
-                        {prediction.predicted_score}
-                      </p>
-                    </div>
+  <StepCard
+    title="Prediction Result"
+    description="Here is your estimated cognitive performance result."
+  >
+    {prediction ? (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6">
+            <p className="text-sm text-cyan-200">Predicted Score</p>
+            <p className="mt-4 text-5xl font-semibold text-white">
+              {prediction.predicted_score}
+            </p>
+          </div>
 
-                    <div className="rounded-3xl border border-fuchsia-400/20 bg-fuchsia-500/10 p-6">
-                      <p className="text-sm text-fuchsia-200">Cognitive Level</p>
-                      <p className="mt-4 text-5xl font-semibold text-white">
-                        {prediction.cognitive_level}
-                      </p>
-                    </div>
-                  </div>
+          <div className="rounded-3xl border border-fuchsia-400/20 bg-fuchsia-500/10 p-6">
+            <p className="text-sm text-fuchsia-200">Cognitive Level</p>
+            <p className="mt-4 text-5xl font-semibold text-white">
+              {prediction.cognitive_level}
+            </p>
+          </div>
+        </div>
 
-                  <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-6">
-                    <p className="text-sm text-emerald-200">Interpretation</p>
-                    <p className="mt-4 text-lg leading-8 text-emerald-50">
-                      This result is based on your reaction speed, memory performance,
-                      caffeine intake, lifestyle choices, and stress level.
-                    </p>
-                  </div>
+        {prediction.shap_explanation && (
+          <>
+            <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
+              <p className="text-sm text-slate-300">Baseline Value</p>
+              <p className="mt-3 text-3xl font-semibold text-white">
+                {prediction.shap_explanation.baseline_value}
+              </p>
+            </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={restartJourney}
-                      className="rounded-2xl bg-white px-5 py-3 font-medium text-slate-950 transition hover:scale-[1.02]"
-                    >
-                      Start Again
-                    </button>
-                  </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-6">
+                <p className="text-sm text-emerald-200">Top Factors Increasing Score</p>
+                <div className="mt-4 space-y-3">
+                  {prediction.shap_explanation.top_positive?.length > 0 ? (
+                    prediction.shap_explanation.top_positive.map((item, index) => (
+                      <div
+                        key={index}
+                        className="rounded-2xl border border-emerald-300/10 bg-black/10 p-4"
+                      >
+                        <p className="text-base font-medium text-white">{item.label}</p>
+                        <p className="mt-1 text-sm text-slate-200">
+                          Value: {item.value}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-300">
+                          +{item.shap_value}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-200">No strong positive factors found.</p>
+                  )}
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-6 text-slate-300">
-                  No prediction result yet.
+              </div>
+
+              <div className="rounded-3xl border border-rose-400/20 bg-rose-500/10 p-6">
+                <p className="text-sm text-rose-200">Top Factors Decreasing Score</p>
+                <div className="mt-4 space-y-3">
+                  {prediction.shap_explanation.top_negative?.length > 0 ? (
+                    prediction.shap_explanation.top_negative.map((item, index) => (
+                      <div
+                        key={index}
+                        className="rounded-2xl border border-rose-300/10 bg-black/10 p-4"
+                      >
+                        <p className="text-base font-medium text-white">{item.label}</p>
+                        <p className="mt-1 text-sm text-slate-200">
+                          Value: {item.value}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-rose-300">
+                          {item.shap_value}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-200">No strong negative factors found.</p>
+                  )}
                 </div>
-              )}
-            </StepCard>
-          )}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-6">
+          <p className="text-sm text-emerald-200">Interpretation</p>
+          <p className="mt-4 text-lg leading-8 text-emerald-50">
+  {buildInterpretation(prediction)}
+</p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={restartJourney}
+            className="rounded-2xl bg-white px-5 py-3 font-medium text-slate-950 transition hover:scale-[1.02]"
+          >
+            Start Again
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-6 text-slate-300">
+        No prediction result yet.
+      </div>
+    )}
+  </StepCard>
+)}
         </motion.div>
 
         <div className="mt-8 flex items-center justify-between">
