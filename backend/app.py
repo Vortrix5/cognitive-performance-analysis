@@ -3,6 +3,7 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 from shap_helper import create_explainer, explain_prediction
+from llm_helper import generate_ai_insight
 import shap
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.cluster import KMeans
@@ -192,10 +193,17 @@ def predict_explain():
         features
     )
 
+    ai_insight = generate_ai_insight(
+    round(score, 2),
+    labels[level],
+    shap_result
+)
+
     return jsonify({
         "predicted_score": round(score, 2),
         "cognitive_level": labels[level],
-        "shap_explanation": shap_result
+        "shap_explanation": shap_result,
+        "ai_insight": ai_insight
     })
 
 if __name__ == "__main__":
