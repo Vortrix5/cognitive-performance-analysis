@@ -60,32 +60,55 @@ export default function PredictionWizard() {
     stress: null,
   });
 
-  function buildInterpretation(prediction) {
+function buildInterpretation(prediction) {
   if (!prediction?.shap_explanation) {
     return "This result is based on your reaction speed, memory performance, caffeine intake, lifestyle choices, and stress level.";
   }
 
   const topPositive = prediction.shap_explanation.top_positive || [];
   const topNegative = prediction.shap_explanation.top_negative || [];
+  const level = prediction.cognitive_level;
 
   const bestPositive = topPositive[0]?.label;
-  const topNeg1 = topNegative[0]?.label;
-  const topNeg2 = topNegative[1]?.label;
+  const neg1 = topNegative[0]?.label;
+  const neg2 = topNegative[1]?.label;
 
-  if (bestPositive && topNeg1 && topNeg2) {
-    return `Your score is mainly lowered by ${topNeg1} and ${topNeg2}, while ${bestPositive} is your strongest supporting factor.`;
+  if (level === "High") {
+    if (bestPositive && neg1) {
+      return `Your result is supported mainly by ${bestPositive}, although ${neg1} still slightly limits the score.`;
+    }
+    if (bestPositive) {
+      return `Your result is strongly supported by ${bestPositive}.`;
+    }
   }
 
-  if (bestPositive && topNeg1) {
-    return `Your score is mainly lowered by ${topNeg1}, while ${bestPositive} helps support it.`;
+  if (level === "Medium") {
+    if (bestPositive && neg1 && neg2) {
+      return `Your profile is mixed: ${bestPositive} supports the score, while ${neg1} and ${neg2} reduce it.`;
+    }
+    if (bestPositive && neg1) {
+      return `Your score is balanced between positive support from ${bestPositive} and downward pressure from ${neg1}.`;
+    }
   }
 
-  if (topNeg1) {
-    return `Your score is mainly influenced by ${topNeg1}.`;
+  if (level === "Low") {
+    if (bestPositive && neg1 && neg2) {
+      return `Your score is mainly lowered by ${neg1} and ${neg2}, while ${bestPositive} is your strongest supporting factor.`;
+    }
+    if (neg1 && bestPositive) {
+      return `Your score is mainly lowered by ${neg1}, while ${bestPositive} helps support it.`;
+    }
+    if (neg1) {
+      return `Your score is mainly influenced by ${neg1}.`;
+    }
   }
 
-  if (bestPositive) {
-    return `${bestPositive} is the strongest factor supporting your score.`;
+  if (bestPositive && neg1 && neg2) {
+    return `Your score is mainly lowered by ${neg1} and ${neg2}, while ${bestPositive} is your strongest supporting factor.`;
+  }
+
+  if (bestPositive && neg1) {
+    return `Your score is influenced by ${neg1}, while ${bestPositive} helps support it.`;
   }
 
   return "This result is based on your reaction speed, memory performance, caffeine intake, lifestyle choices, and stress level.";
@@ -465,6 +488,40 @@ export default function PredictionWizard() {
   {buildInterpretation(prediction)}
 </p>
         </div>
+
+        {prediction.ai_insight && (
+  <div className="rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6">
+    <p className="text-sm text-cyan-200">AI Insight</p>
+
+    <p className="mt-4 text-lg leading-8 text-cyan-50">
+      {prediction.ai_insight.summary}
+    </p>
+
+    <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+        <p className="text-sm text-slate-300">Key Reasons</p>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-100">
+          {prediction.ai_insight.key_reasons?.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+        <p className="text-sm text-slate-300">Suggestions</p>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-100">
+          {prediction.ai_insight.suggestions?.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <p className="mt-5 text-sm text-slate-300">
+      {prediction.ai_insight.disclaimer}
+    </p>
+  </div>
+)}
 
         <div className="flex flex-wrap gap-3">
           <button
