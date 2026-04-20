@@ -2,8 +2,8 @@ import json
 import os
 from openai import OpenAI
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
+api_key = os.environ.get("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
 
 def build_llm_payload(predicted_score, cognitive_level, shap_explanation):
     return {
@@ -142,6 +142,9 @@ def fallback_ai_insight(payload):
 def generate_ai_insight(predicted_score, cognitive_level, shap_explanation):
     payload = build_llm_payload(predicted_score, cognitive_level, shap_explanation)
     prompt = build_prompt(payload)
+
+    if client is None:
+        return fallback_ai_insight(payload)
 
     try:
         response = client.responses.create(
